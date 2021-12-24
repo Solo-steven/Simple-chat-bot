@@ -42,11 +42,13 @@ router.post('/', async function(req, res){
             case states.toDoInsert: 
                 handleStateTodoInsert(user, event);
                 break;
+            case states.toDoDelete:
+                handleStateTodoDelete(user, event);
             case states.toDoUpdateRequest: 
+                handleStateTodoUpdateRequest(user, event);
                 break;
             case states.toDoUpdateReply:
-                break;
-            case states.toDoDelete:
+                handleStateTodoUpdateReply(user, event);
                 break;
         }
     }
@@ -69,12 +71,40 @@ async function handleStateTodoInit(user, event) {
             user.save();
             break;
         case "Read To do List":
-            await client.replyMessage(event.replyToken, messages.generateReadMessgae(user.todoList))
+            if(user.todoList.length === 0)  {
+                await client.replyMessage(event.replyToken, {
+                    type: "text",
+                    text: "To Do List is empty !!"
+                })
+                return;
+            }
+            await client.pushMessage(user.id, messages.generateReadMessgae(user.todoList))
             await client.pushMessage(user.id, messages.wellcomeMessage);
             break;
         case "Change Content":
+            if(user.todoList.length === 0) {
+                await client.replyMessage(event.replyToken, {
+                    type: "text",
+                    text: "To Do List is empty !!"
+                })
+                break;
+            }
+            await client.replyMessage(event.replyToken, {
+                type: "text",text: "Which one to Update?"
+            })
+            await client.pushMessage(user.id, messages.generateReadMessgae(user.todoList))          
+            user.state = states.toDoUpdateRequest;
+            user.save();
             break;
         case "Delete To do":
+            await client.replyMessage(event.replyToken, {
+                type: "text",
+                text: "Which one to Delete?"
+            })
+            await client.replyMessage(event.replyToken, {
+                type: "text",text: "Which one to Delete?"
+            })
+            await client.pushMessage(user.id, messages.generateReadMessgae(user.todoList))
             user.state = states.toDoDelete;
             user.save();
             break;
@@ -91,6 +121,67 @@ async function handleStateTodoInsert(user, event) {
     user.save();
     await client.replyMessage(event.replyToken, {
         type: "text", text: "Success add new to do item "
+    });
+    await client.pushMessage(user.id, messages.wellcomeMessage);
+}
+// state 3: two arrow out
+async function handleStateTodoDelete(user, event) {
+    const index = Number(event.message.text); 
+    if(isNaN(index)) {
+        await client.replyMessage(event.replyToken, {
+            type: "text", text: "Please Input Correct Index."
+        });
+        return;
+    }
+    if(index >= user.todoList.length) {
+        await client.replyMessage(event.replyToken, {
+            type: "text", text: "Index too big. Please Input Correct Index."
+        });
+        return;     
+    }
+    user.todoList = [
+        ...user.todoList.slice(0,index), 
+        ...user.todoList.slice(index + 1, user.todoList.length)
+    ];
+    user.state = states.toDoInit;
+    user.save();
+    await client.replyMessage(event.replyToken, {
+        type: "text", text: "Success delete to do item "
+    });
+    await client.pushMessage(user.id, messages.wellcomeMessage);
+    return;
+}
+
+//state 4 : two arrow out
+async function handleStateTodoUpdateRequest(user, event) {
+    const index = Number(event.message.text); 
+    if(isNaN(index)) {
+        await client.replyMessage(event.replyToken, {
+            type: "text", text: "Please Input Correct Index."
+        });
+        return;
+    }
+    if(index >= user.todoList.length) {
+        await client.replyMessage(event.replyToken, {
+            type: "text", text: "Index too big. Please Input Correct Index."
+        });
+        return;     
+    }
+    user.updateIndex = index ; 
+    user.state = states.toDoUpdateReply;
+    user.save();
+    await client.replyMessage(event.replyToken, {
+        type: "text", text: "What is new content "
+    });
+}
+
+async function handleStateTodoUpdateReply(user, event) {
+    const newTodoItem = event.message.text;
+    user.todoList[user.updateIndex] = newTodoItem;
+    user.state = states.toDoInit;
+    user.save();
+    await client.replyMessage(event.replyToken, {
+        type: "text", text: "Success change to do item "
     });
     await client.pushMessage(user.id, messages.wellcomeMessage);
 }

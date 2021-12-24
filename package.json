@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "nodemon index.js",
     "db:start": "make",
-    "db:stop": "make clean"
+    "db:stop": "make clean",
+    "db:entry": "make entry"
   },
   "keywords": [],
   "author": "",
